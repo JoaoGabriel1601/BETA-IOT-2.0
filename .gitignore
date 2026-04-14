@@ -1,0 +1,29 @@
+# Credenciais locais (NÃO commitar!)
+firmware/datacenter_iot/config.local.h
+**/secrets.json
+**/.env
+**/.env.local
+
+# Build artifacts — Arduino / PlatformIO
+build/
+.pio/
+.vscode/
+*.bin
+*.elf
+*.hex
+*.map
+
+# Firebase Hosting / CLI
+.firebase/
+.firebaserc
+firebase-debug.log
+
+# Node
+node_modules/
+npm-debug.log
+
+# Editor / SO
+.DS_Store
+Thumbs.db
+*.swp
+*~

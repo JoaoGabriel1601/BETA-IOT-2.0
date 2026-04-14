@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datacenter IoT — Monitoramento</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1><span class="logo">[DC]</span> Datacenter IoT</h1>
+        <div class="status-bar">
+            <span id="connection-status" class="status-dot offline">OFFLINE</span>
+            <span id="device-info">Aguardando dispositivo...</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- CARDS DE STATUS ATUAL -->
+        <section class="cards">
+            <div class="card" id="card-temp">
+                <div class="card-icon">TEMP</div>
+                <div class="card-label">Temperatura</div>
+                <div class="card-value"><span id="val-temp">--</span> <small>°C</small></div>
+            </div>
+            <div class="card" id="card-hum">
+                <div class="card-icon">UMID</div>
+                <div class="card-label">Umidade</div>
+                <div class="card-value"><span id="val-hum">--</span> <small>%</small></div>
+            </div>
+            <div class="card" id="card-light">
+                <div class="card-icon">LUZ</div>
+                <div class="card-label">Luminosidade</div>
+                <div class="card-value"><span id="val-light">--</span> <small>%</small></div>
+            </div>
+            <div class="card" id="card-volt">
+                <div class="card-icon">VAC</div>
+                <div class="card-label">Tensão AC</div>
+                <div class="card-value"><span id="val-volt">--</span> <small>V</small></div>
+            </div>
+            <div class="card card-wide" id="card-energy">
+                <div class="card-icon">ENERG</div>
+                <div class="card-label">Fonte de Energia</div>
+                <div class="card-value" id="val-energy">--</div>
+            </div>
+            <div class="card card-wide" id="card-alarm">
+                <div class="card-icon">ALARM</div>
+                <div class="card-label">Status do Alarme</div>
+                <div class="card-value" id="val-alarm">--</div>
+            </div>
+        </section>
+
+        <!-- GRÁFICOS -->
+        <section class="charts">
+            <div class="chart-container">
+                <h3>Temperatura (°C)</h3>
+                <canvas id="chart-temp"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Umidade (%)</h3>
+                <canvas id="chart-hum"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Luminosidade (%)</h3>
+                <canvas id="chart-light"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Tensão AC (V)</h3>
+                <canvas id="chart-volt"></canvas>
+            </div>
+        </section>
+
+        <!-- EVENTOS DE INTRUSÃO -->
+        <section class="intrusion">
+            <h2>Eventos de Intrusão</h2>
+            <div id="intrusion-list" class="intrusion-list">
+                <p class="empty">Nenhum evento registrado.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Sistema IoT Datacenter &middot; ESP32 + Firebase RTDB</p>
+    </footer>
+
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <script src="app.js"></script>
+</body>
+</html>

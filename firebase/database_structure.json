@@ -1,0 +1,55 @@
+{
+  "datacenter": {
+    "devices": {
+      "esp32-datacenter-001": {
+        "current": {
+          "temperature": 24.5,
+          "humidity": 55.0,
+          "light_level": 78.0,
+          "motion_detected": false,
+          "voltage_ac": 127.3,
+          "energy_source": "solar",
+          "alarm_active": false,
+          "relay_solar": true,
+          "relay_diesel": false,
+          "uptime_ms": 123456789,
+          "timestamp": 1713135600000
+        },
+        "info": {
+          "name": "Datacenter Principal",
+          "location": "Sala de Servidores",
+          "ip": "192.168.0.42",
+          "rssi": -58,
+          "last_seen": 1713135600000
+        }
+      }
+    },
+    "readings": {
+      "esp32-datacenter-001": {
+        "-NxAbCd123EXEMPLO": {
+          "temperature": 24.5,
+          "humidity": 55.0,
+          "light_level": 78.0,
+          "motion_detected": false,
+          "voltage_ac": 127.3,
+          "energy_source": "solar",
+          "alarm_active": false,
+          "relay_solar": true,
+          "relay_diesel": false,
+          "uptime_ms": 123456789,
+          "timestamp": 1713135600000
+        }
+      }
+    },
+    "intrusion_events": {
+      "esp32-datacenter-001": {
+        "-NxEfGh456EXEMPLO": {
+          "event_type": "motion_detected",
+          "description": "Movimento detectado pelo sensor PIR no datacenter",
+          "acknowledged": false,
+          "timestamp": 1713135600000
+        }
+      }
+    }
+  }
+}

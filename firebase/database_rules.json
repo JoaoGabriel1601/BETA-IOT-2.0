@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "datacenter": {
+      "devices": {
+        "$device_id": {
+          "current": {
+            ".read": true,
+            ".write": true
+          },
+          "info": {
+            ".read": true,
+            ".write": true
+          }
+        }
+      },
+      "readings": {
+        "$device_id": {
+          ".read": true,
+          ".write": true,
+          ".indexOn": ["timestamp"]
+        }
+      },
+      "intrusion_events": {
+        "$device_id": {
+          ".read": true,
+          ".write": true,
+          ".indexOn": ["timestamp", "acknowledged"]
+        }
+      }
+    }
+  }
+}
