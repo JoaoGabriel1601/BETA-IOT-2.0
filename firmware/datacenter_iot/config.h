@@ -4,8 +4,8 @@
 // ================================================================
 // CONFIGURAÇÕES Wi-Fi
 // ================================================================
-#define WIFI_SSID         "NOME_DA_SUA_REDE"
-#define WIFI_PASSWORD     "SENHA_DA_SUA_REDE"
+#define WIFI_SSID         "Quarto do João"
+#define WIFI_PASSWORD     "81379767"
 
 // ================================================================
 // CONFIGURAÇÕES FIREBASE
@@ -18,8 +18,8 @@
 //
 // DEVICE_ID: identificador único deste ESP32 (caracteres sem espaços)
 // ================================================================
-#define FIREBASE_HOST     "SEU_PROJETO-default-rtdb.firebaseio.com"
-#define FIREBASE_AUTH     "SUA_DATABASE_SECRET_AQUI"
+#define FIREBASE_HOST     "beta-iot-cf12a-default-rtdb.firebaseio.com"
+#define FIREBASE_AUTH     "FOxcFw4qRxxMX2BQiRXJaLLND4XkHfmQoGhWHzIm"
 #define DEVICE_ID         "esp32-datacenter-001"
 
 // ================================================================

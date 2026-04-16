@@ -9,7 +9,7 @@
 // CONFIGURAÇÃO (ajuste aqui)
 // ============================================
 const firebaseConfig = {
-    databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com"
+    databaseURL: "https://beta-iot-cf12a-default-rtdb.firebaseio.com"
 };
 
 const DEVICE_ID = "esp32-datacenter-001";
@@ -19,7 +19,7 @@ const MAX_EVENTS = 20;           // eventos de intrusão a exibir
 // Thresholds visuais (igual ao firmware)
 const THRESHOLDS = {
     tempHigh: 28, tempLow: 15,
-    humHigh:  70, humLow: 30,
+    humHigh: 70, humLow: 30,
     voltLow: 100, voltHigh: 240
 };
 
@@ -35,18 +35,18 @@ const db = firebase.database();
 const $ = (id) => document.getElementById(id);
 
 const el = {
-    status:     $("connection-status"),
+    status: $("connection-status"),
     deviceInfo: $("device-info"),
-    temp:       $("val-temp"),
-    hum:        $("val-hum"),
-    light:      $("val-light"),
-    volt:       $("val-volt"),
-    energy:     $("val-energy"),
-    alarm:      $("val-alarm"),
-    cardTemp:   $("card-temp"),
-    cardHum:    $("card-hum"),
-    cardVolt:   $("card-volt"),
-    intrusion:  $("intrusion-list")
+    temp: $("val-temp"),
+    hum: $("val-hum"),
+    light: $("val-light"),
+    volt: $("val-volt"),
+    energy: $("val-energy"),
+    alarm: $("val-alarm"),
+    cardTemp: $("card-temp"),
+    cardHum: $("card-hum"),
+    cardVolt: $("card-volt"),
+    intrusion: $("intrusion-list")
 };
 
 // ============================================
@@ -87,10 +87,10 @@ function makeChart(canvasId, label, color) {
 }
 
 const charts = {
-    temp:  makeChart("chart-temp",  "Temperatura",  "#ff4d6d"),
-    hum:   makeChart("chart-hum",   "Umidade",      "#4da8ff"),
+    temp: makeChart("chart-temp", "Temperatura", "#ff4d6d"),
+    hum: makeChart("chart-hum", "Umidade", "#4da8ff"),
     light: makeChart("chart-light", "Luminosidade", "#f5a623"),
-    volt:  makeChart("chart-volt",  "Tensão AC",    "#a78bfa")
+    volt: makeChart("chart-volt", "Tensão AC", "#a78bfa")
 };
 
 function pushPoint(chart, label, value) {
@@ -107,7 +107,7 @@ function pushPoint(chart, label, value) {
 // ATUALIZAÇÃO EM TEMPO REAL
 // ============================================
 const currentRef = db.ref(`datacenter/devices/${DEVICE_ID}/current`);
-const infoRef    = db.ref(`datacenter/devices/${DEVICE_ID}/info`);
+const infoRef = db.ref(`datacenter/devices/${DEVICE_ID}/info`);
 const readingsRef = db.ref(`datacenter/readings/${DEVICE_ID}`);
 const intrusionRef = db.ref(`datacenter/intrusion_events/${DEVICE_ID}`);
 
@@ -136,10 +136,10 @@ readingsRef.orderByChild("timestamp").limitToLast(MAX_POINTS).on("child_added", 
     const t = r.timestamp ? new Date(r.timestamp) : new Date();
     const label = t.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-    pushPoint(charts.temp,  label, r.temperature);
-    pushPoint(charts.hum,   label, r.humidity);
+    pushPoint(charts.temp, label, r.temperature);
+    pushPoint(charts.hum, label, r.humidity);
     pushPoint(charts.light, label, r.light_level);
-    pushPoint(charts.volt,  label, r.voltage_ac);
+    pushPoint(charts.volt, label, r.voltage_ac);
 });
 
 // Eventos de intrusão
@@ -164,10 +164,10 @@ function setStatus(online) {
 }
 
 function updateCards(d) {
-    el.temp.textContent  = d.temperature?.toFixed(1) ?? "--";
-    el.hum.textContent   = d.humidity?.toFixed(1)    ?? "--";
+    el.temp.textContent = d.temperature?.toFixed(1) ?? "--";
+    el.hum.textContent = d.humidity?.toFixed(1) ?? "--";
     el.light.textContent = d.light_level?.toFixed(0) ?? "--";
-    el.volt.textContent  = d.voltage_ac?.toFixed(1)  ?? "--";
+    el.volt.textContent = d.voltage_ac?.toFixed(1) ?? "--";
 
     // Energia
     if (d.energy_source === "solar") {
@@ -196,7 +196,7 @@ function updateCards(d) {
     );
     el.cardVolt.className = "card" + (
         d.voltage_ac > THRESHOLDS.voltHigh ? " danger" :
-        d.voltage_ac > 0 && d.voltage_ac < THRESHOLDS.voltLow ? " warning" : ""
+            d.voltage_ac > 0 && d.voltage_ac < THRESHOLDS.voltLow ? " warning" : ""
     );
 }
 
