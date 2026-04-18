@@ -4,25 +4,25 @@
       "devices": {
         "$device_id": {
           "current": {
-            ".read": true,
+            ".read": "auth != null",
             ".write": true
           },
           "info": {
-            ".read": true,
+            ".read": "auth != null",
             ".write": true
           }
         }
       },
       "readings": {
         "$device_id": {
-          ".read": true,
+          ".read": "auth != null",
           ".write": true,
           ".indexOn": ["timestamp"]
         }
       },
       "intrusion_events": {
         "$device_id": {
-          ".read": true,
+          ".read": "auth != null",
           ".write": true,
           ".indexOn": ["timestamp", "acknowledged"]
         }

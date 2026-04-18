@@ -1,4 +1,7 @@
 {
+  "database": {
+    "rules": "firebase/database_rules.json"
+  },
   "hosting": {
     "public": "dashboard",
     "ignore": [

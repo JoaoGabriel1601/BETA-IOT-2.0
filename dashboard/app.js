@@ -1,22 +1,25 @@
 /* ================================================================
- *  Datacenter IoT — Dashboard (Firebase Realtime Database)
- * ================================================================
- *  IMPORTANTE: ajuste `firebaseConfig.databaseURL` com a URL
- *  do seu Realtime Database (veja README.md seção "Firebase").
+ *  Datacenter IoT — Dashboard (Firebase Realtime Database + Auth)
  * ================================================================ */
 
 // ============================================
-// CONFIGURAÇÃO (ajuste aqui)
+// CONFIGURAÇÃO
 // ============================================
 const firebaseConfig = {
-    databaseURL: "https://beta-iot-cf12a-default-rtdb.firebaseio.com"
+    apiKey: "AIzaSyBbDHmU7dRi0_szTXgcFLm2bUTeEbk10kA",
+    authDomain: "beta-iot-cf12a.firebaseapp.com",
+    databaseURL: "https://beta-iot-cf12a-default-rtdb.firebaseio.com",
+    projectId: "beta-iot-cf12a",
+    storageBucket: "beta-iot-cf12a.firebasestorage.app",
+    messagingSenderId: "842307909870",
+    appId: "1:842307909870:web:3c192658897e2625541bff",
+    measurementId: "G-QSZGDZ20E0"
 };
 
 const DEVICE_ID = "esp32-datacenter-001";
-const MAX_POINTS = 50;           // pontos de histórico nos gráficos
-const MAX_EVENTS = 20;           // eventos de intrusão a exibir
+const MAX_POINTS = 50;
+const MAX_EVENTS = 20;
 
-// Thresholds visuais (igual ao firmware)
 const THRESHOLDS = {
     tempHigh: 28, tempLow: 15,
     humHigh: 70, humLow: 30,
@@ -28,6 +31,8 @@ const THRESHOLDS = {
 // ============================================
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 // ============================================
 // ELEMENTOS DO DOM
@@ -35,6 +40,15 @@ const db = firebase.database();
 const $ = (id) => document.getElementById(id);
 
 const el = {
+    body: document.body,
+    loginOverlay: $("login-overlay"),
+    loginForm: $("login-form"),
+    loginEmail: $("login-email"),
+    loginPassword: $("login-password"),
+    loginError: $("login-error"),
+    loginSubmit: $("login-submit"),
+    userEmail: $("user-email"),
+    logoutBtn: $("logout-btn"),
     status: $("connection-status"),
     deviceInfo: $("device-info"),
     temp: $("val-temp"),
@@ -103,51 +117,144 @@ function pushPoint(chart, label, value) {
     chart.update("none");
 }
 
+function resetCharts() {
+    Object.values(charts).forEach((c) => {
+        c.data.labels = [];
+        c.data.datasets[0].data = [];
+        c.update("none");
+    });
+}
+
 // ============================================
-// ATUALIZAÇÃO EM TEMPO REAL
+// LISTENERS RTDB (anexados só após login)
 // ============================================
 const currentRef = db.ref(`datacenter/devices/${DEVICE_ID}/current`);
 const infoRef = db.ref(`datacenter/devices/${DEVICE_ID}/info`);
-const readingsRef = db.ref(`datacenter/readings/${DEVICE_ID}`);
+const readingsQuery = db
+    .ref(`datacenter/readings/${DEVICE_ID}`)
+    .orderByChild("timestamp")
+    .limitToLast(MAX_POINTS);
 const intrusionRef = db.ref(`datacenter/intrusion_events/${DEVICE_ID}`);
+const intrusionQuery = intrusionRef
+    .orderByChild("timestamp")
+    .limitToLast(MAX_EVENTS);
 
-// Estado atual (cards)
-currentRef.on("value", (snap) => {
-    const data = snap.val();
-    if (!data) {
-        setStatus(false);
-        return;
+let listenersAttached = false;
+
+const handlers = {
+    current: (snap) => {
+        const data = snap.val();
+        if (!data) { setStatus(false); return; }
+        setStatus(true);
+        updateCards(data);
+    },
+    info: (snap) => {
+        const info = snap.val();
+        if (!info) return;
+        const ls = info.last_seen ? new Date(info.last_seen).toLocaleString("pt-BR") : "?";
+        el.deviceInfo.textContent = `${info.name || DEVICE_ID} · ${info.location || ""} · último: ${ls}`;
+    },
+    reading: (snap) => {
+        const r = snap.val();
+        const t = r.timestamp ? new Date(r.timestamp) : new Date();
+        const label = t.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        pushPoint(charts.temp, label, r.temperature);
+        pushPoint(charts.hum, label, r.humidity);
+        pushPoint(charts.light, label, r.light_level);
+        pushPoint(charts.volt, label, r.voltage_ac);
+    },
+    intrusionAdded: (snap) => addIntrusionEvent(snap.key, snap.val()),
+    intrusionChanged: (snap) => addIntrusionEvent(snap.key, snap.val(), true)
+};
+
+function attachListeners() {
+    if (listenersAttached) return;
+    currentRef.on("value", handlers.current);
+    infoRef.on("value", handlers.info);
+    readingsQuery.on("child_added", handlers.reading);
+    intrusionQuery.on("child_added", handlers.intrusionAdded);
+    intrusionRef.on("child_changed", handlers.intrusionChanged);
+    listenersAttached = true;
+}
+
+function detachListeners() {
+    if (!listenersAttached) return;
+    currentRef.off("value", handlers.current);
+    infoRef.off("value", handlers.info);
+    readingsQuery.off("child_added", handlers.reading);
+    intrusionQuery.off("child_added", handlers.intrusionAdded);
+    intrusionRef.off("child_changed", handlers.intrusionChanged);
+    listenersAttached = false;
+}
+
+// ============================================
+// AUTH
+// ============================================
+function mapAuthError(code) {
+    switch (code) {
+        case "auth/invalid-email": return "Email inválido.";
+        case "auth/user-disabled": return "Usuário desativado.";
+        case "auth/user-not-found":
+        case "auth/wrong-password":
+        case "auth/invalid-credential": return "Email ou senha incorretos.";
+        case "auth/too-many-requests": return "Muitas tentativas. Aguarde alguns minutos.";
+        case "auth/network-request-failed": return "Sem conexão com a internet.";
+        default: return "Não foi possível entrar. Tente novamente.";
     }
-    setStatus(true);
-    updateCards(data);
+}
+
+function setLoginError(message) {
+    if (!message) {
+        el.loginError.hidden = true;
+        el.loginError.textContent = "";
+    } else {
+        el.loginError.hidden = false;
+        el.loginError.textContent = message;
+    }
+}
+
+el.loginForm.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const email = el.loginEmail.value.trim();
+    const password = el.loginPassword.value;
+    if (!email || !password) return;
+
+    setLoginError(null);
+    el.loginSubmit.disabled = true;
+    el.loginSubmit.textContent = "Entrando...";
+    try {
+        await auth.signInWithEmailAndPassword(email, password);
+    } catch (err) {
+        setLoginError(mapAuthError(err.code));
+    } finally {
+        el.loginSubmit.disabled = false;
+        el.loginSubmit.textContent = "Entrar";
+    }
 });
 
-// Info do dispositivo
-infoRef.on("value", (snap) => {
-    const info = snap.val();
-    if (!info) return;
-    const ls = info.last_seen ? new Date(info.last_seen).toLocaleString("pt-BR") : "?";
-    el.deviceInfo.textContent = `${info.name || DEVICE_ID} · ${info.location || ""} · último: ${ls}`;
+el.logoutBtn.addEventListener("click", async () => {
+    await auth.signOut();
 });
 
-// Histórico para os gráficos
-readingsRef.orderByChild("timestamp").limitToLast(MAX_POINTS).on("child_added", (snap) => {
-    const r = snap.val();
-    const t = r.timestamp ? new Date(r.timestamp) : new Date();
-    const label = t.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-
-    pushPoint(charts.temp, label, r.temperature);
-    pushPoint(charts.hum, label, r.humidity);
-    pushPoint(charts.light, label, r.light_level);
-    pushPoint(charts.volt, label, r.voltage_ac);
-});
-
-// Eventos de intrusão
-intrusionRef.orderByChild("timestamp").limitToLast(MAX_EVENTS).on("child_added", (snap) => {
-    addIntrusionEvent(snap.key, snap.val());
-});
-intrusionRef.on("child_changed", (snap) => {
-    addIntrusionEvent(snap.key, snap.val(), true);
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        el.body.classList.remove("unauthenticated");
+        el.body.classList.add("authenticated");
+        el.userEmail.textContent = user.email || "";
+        el.loginPassword.value = "";
+        setLoginError(null);
+        attachListeners();
+    } else {
+        detachListeners();
+        resetCharts();
+        renderedEvents.forEach((node) => node.remove());
+        renderedEvents.clear();
+        setStatus(false);
+        el.deviceInfo.textContent = "Aguardando dispositivo...";
+        el.userEmail.textContent = "";
+        el.body.classList.remove("authenticated");
+        el.body.classList.add("unauthenticated");
+    }
 });
 
 // ============================================
@@ -169,7 +276,6 @@ function updateCards(d) {
     el.light.textContent = d.light_level?.toFixed(0) ?? "--";
     el.volt.textContent = d.voltage_ac?.toFixed(1) ?? "--";
 
-    // Energia
     if (d.energy_source === "solar") {
         el.energy.textContent = "☀ SOLAR";
         el.energy.className = "solar";
@@ -178,7 +284,6 @@ function updateCards(d) {
         el.energy.className = "diesel";
     }
 
-    // Alarme
     if (d.alarm_active) {
         el.alarm.textContent = "!! INVASÃO !!";
         el.alarm.className = "active";
@@ -187,7 +292,6 @@ function updateCards(d) {
         el.alarm.className = "inactive";
     }
 
-    // Cores condicionais
     el.cardTemp.className = "card" + (
         d.temperature > THRESHOLDS.tempHigh || d.temperature < THRESHOLDS.tempLow ? " warning" : ""
     );
@@ -233,13 +337,16 @@ function addIntrusionEvent(key, data, updated = false) {
     `;
 
     node.querySelector(".event-btn").addEventListener("click", () => {
-        intrusionRef.child(key).update({ acknowledged: true });
+        intrusionRef.child(key).update({
+            acknowledged: true,
+            acknowledged_at: Date.now(),
+            acknowledged_by: auth.currentUser?.email || "unknown"
+        });
     });
 
     el.intrusion.prepend(node);
     renderedEvents.set(key, node);
 
-    // Remove eventos antigos da UI
     if (renderedEvents.size > MAX_EVENTS) {
         const oldest = Array.from(renderedEvents.keys())[0];
         const oldNode = renderedEvents.get(oldest);
