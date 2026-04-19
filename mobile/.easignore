@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+ios/
+android/
+*.log
+.DS_Store
+scripts/test-notifications.js
+scripts/generate-assets.js
