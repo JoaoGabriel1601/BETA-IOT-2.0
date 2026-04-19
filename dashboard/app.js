@@ -19,6 +19,8 @@ const firebaseConfig = {
 const DEVICE_ID = "esp32-datacenter-001";
 const MAX_POINTS = 50;
 const MAX_EVENTS = 20;
+const OFFLINE_AFTER_MS = 120_000;
+const STATUS_RECHECK_MS = 15_000;
 
 const THRESHOLDS = {
     tempHigh: 28, tempLow: 15,
@@ -140,19 +142,19 @@ const intrusionQuery = intrusionRef
     .limitToLast(MAX_EVENTS);
 
 let listenersAttached = false;
+let latestCurrent = null;
+let latestInfo = null;
+let statusTimer = null;
 
 const handlers = {
     current: (snap) => {
-        const data = snap.val();
-        if (!data) { setStatus(false); return; }
-        setStatus(true);
-        updateCards(data);
+        latestCurrent = snap.val();
+        evaluateStatus();
     },
     info: (snap) => {
-        const info = snap.val();
-        if (!info) return;
-        const ls = info.last_seen ? new Date(info.last_seen).toLocaleString("pt-BR") : "?";
-        el.deviceInfo.textContent = `${info.name || DEVICE_ID} · ${info.location || ""} · último: ${ls}`;
+        latestInfo = snap.val();
+        renderDeviceInfo();
+        evaluateStatus();
     },
     reading: (snap) => {
         const r = snap.val();
@@ -175,6 +177,7 @@ function attachListeners() {
     intrusionQuery.on("child_added", handlers.intrusionAdded);
     intrusionRef.on("child_changed", handlers.intrusionChanged);
     listenersAttached = true;
+    statusTimer = setInterval(evaluateStatus, STATUS_RECHECK_MS);
 }
 
 function detachListeners() {
@@ -185,6 +188,9 @@ function detachListeners() {
     intrusionQuery.off("child_added", handlers.intrusionAdded);
     intrusionRef.off("child_changed", handlers.intrusionChanged);
     listenersAttached = false;
+    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
+    latestCurrent = null;
+    latestInfo = null;
 }
 
 // ============================================
@@ -250,6 +256,7 @@ auth.onAuthStateChanged((user) => {
         renderedEvents.forEach((node) => node.remove());
         renderedEvents.clear();
         setStatus(false);
+        clearCards();
         el.deviceInfo.textContent = "Aguardando dispositivo...";
         el.userEmail.textContent = "";
         el.body.classList.remove("authenticated");
@@ -268,6 +275,45 @@ function setStatus(online) {
         el.status.textContent = "OFFLINE";
         el.status.className = "status-dot offline";
     }
+}
+
+function computeOnline() {
+    const ts = latestCurrent?.timestamp ?? latestInfo?.last_seen ?? 0;
+    return ts > 0 && (Date.now() - ts) < OFFLINE_AFTER_MS;
+}
+
+function evaluateStatus() {
+    const online = computeOnline();
+    setStatus(online);
+    if (online && latestCurrent) {
+        updateCards(latestCurrent);
+    } else {
+        clearCards();
+    }
+}
+
+function clearCards() {
+    el.temp.textContent = "--";
+    el.hum.textContent = "--";
+    el.light.textContent = "--";
+    el.volt.textContent = "--";
+    el.energy.textContent = "--";
+    el.energy.className = "";
+    el.alarm.textContent = "--";
+    el.alarm.className = "";
+    el.cardTemp.className = "card";
+    el.cardHum.className = "card";
+    el.cardVolt.className = "card";
+}
+
+function renderDeviceInfo() {
+    const info = latestInfo;
+    if (!info) {
+        el.deviceInfo.textContent = "Aguardando dispositivo...";
+        return;
+    }
+    const ls = info.last_seen ? new Date(info.last_seen).toLocaleString("pt-BR") : "?";
+    el.deviceInfo.textContent = `${info.name || DEVICE_ID} · ${info.location || ""} · último: ${ls}`;
 }
 
 function updateCards(d) {

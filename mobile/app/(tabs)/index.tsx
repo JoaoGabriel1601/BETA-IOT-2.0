@@ -52,12 +52,12 @@ export default function DashboardScreen() {
     setTimeout(() => setRefreshing(false), 700);
   }, []);
 
-  const temp = current?.temperature;
-  const hum = current?.humidity;
-  const light = current?.light_level;
-  const volt = current?.voltage_ac;
-  const energy = current?.energy_source;
-  const alarmActive = !!current?.alarm_active;
+  const temp = online ? current?.temperature : undefined;
+  const hum = online ? current?.humidity : undefined;
+  const light = online ? current?.light_level : undefined;
+  const volt = online ? current?.voltage_ac : undefined;
+  const energy = online ? current?.energy_source : undefined;
+  const alarmActive = online && !!current?.alarm_active;
 
   return (
     <LinearGradient colors={gradients.bgScreen} style={styles.container}>
@@ -75,9 +75,13 @@ export default function DashboardScreen() {
         >
           <View style={styles.headerRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.hello}>Datacenter</Text>
-              <Text style={styles.title}>{info?.name ?? 'esp32-datacenter-001'}</Text>
-              {info?.location ? <Text style={styles.subtitle}>{info.location}</Text> : null}
+              <Text style={styles.hello}>Monitoramento</Text>
+              <Text style={styles.title}>Datacenter IoT</Text>
+              {info?.name || info?.location ? (
+                <Text style={styles.subtitle}>
+                  {[info?.name, info?.location].filter(Boolean).join(' · ')}
+                </Text>
+              ) : null}
             </View>
             <StatusIndicator online={online} />
           </View>
@@ -154,8 +158,8 @@ export default function DashboardScreen() {
               <SensorCard
                 icon={alarmActive ? 'warning' : 'shield-checkmark'}
                 label="Alarme"
-                value={alarmActive ? 'INVASÃO' : 'OK'}
-                variant={alarmActive ? 'danger' : 'success'}
+                value={online ? (alarmActive ? 'INVASÃO' : 'OK') : '--'}
+                variant={alarmActive ? 'danger' : online ? 'success' : 'default'}
                 iconGradient={
                   alarmActive ? ['#ff5e7e', '#a8327d'] : ['#01b574', '#21d4fd']
                 }
