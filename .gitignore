@@ -27,3 +27,8 @@ npm-debug.log
 Thumbs.db
 *.swp
 *~
+
+# Claude Code / agents (local tooling)
+.claude/
+.agents/
+skills-lock.json
