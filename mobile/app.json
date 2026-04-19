@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.betaiot.datacenter",
-      "versionCode": 1,
+      "versionCode": 3,
       "adaptiveIcon": {
         "backgroundColor": "#060b28",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
