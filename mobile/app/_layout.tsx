@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { useAlertNotifications } from '@/hooks/useAlertNotifications';
 import { useAuth } from '@/hooks/useAuth';
+import { useOTAUpdates } from '@/hooks/useOTAUpdates';
 import { colors } from '@/theme/colors';
 
 export const unstable_settings = {
@@ -19,6 +20,7 @@ function AuthGate() {
   const router = useRouter();
 
   useAlertNotifications();
+  useOTAUpdates();
 
   useEffect(() => {
     if (initializing) return;

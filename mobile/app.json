@@ -8,6 +8,13 @@
     "scheme": "datacenteriot",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5074ccc4-8e60-4c31-9777-a4fa30689cb5",
+      "fallbackToCacheTimeout": 0
+    },
     "android": {
       "package": "com.betaiot.datacenter",
       "versionCode": 1,
