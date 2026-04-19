@@ -32,3 +32,6 @@ Thumbs.db
 .claude/
 .agents/
 skills-lock.json
+
+# JetBrains IDEs (Android Studio / IntelliJ)
+.idea/
