@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -47,8 +48,12 @@ export default function LoginScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.kb}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.inner}>
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView
+            contentContainerStyle={styles.inner}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}>
             <LinearGradient colors={gradients.brand} style={styles.logo}>
               <Text style={styles.logoText}>DC</Text>
             </LinearGradient>
@@ -107,7 +112,7 @@ export default function LoginScreen() {
                 )}
               </LinearGradient>
             </Pressable>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
@@ -118,7 +123,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safe: { flex: 1 },
   kb: { flex: 1 },
-  inner: { flex: 1, padding: 24, justifyContent: 'center', gap: 14 },
+  inner: { flexGrow: 1, padding: 24, justifyContent: 'center', gap: 14 },
   logo: {
     width: 72,
     height: 72,
