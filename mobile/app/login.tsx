@@ -4,6 +4,7 @@ import { FirebaseError } from 'firebase/app';
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -54,9 +55,12 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             bounces={false}>
-            <LinearGradient colors={gradients.brand} style={styles.logo}>
-              <Text style={styles.logoText}>DC</Text>
-            </LinearGradient>
+            <Image
+              source={require('@/assets/images/logo-mark.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+
             <Text style={styles.title}>Datacenter IoT</Text>
             <Text style={styles.subtitle}>Entre para monitorar o datacenter</Text>
 
@@ -125,14 +129,11 @@ const styles = StyleSheet.create({
   kb: { flex: 1 },
   inner: { flexGrow: 1, padding: 24, justifyContent: 'center', gap: 14 },
   logo: {
-    width: 72,
-    height: 72,
+    width: 96,
+    height: 96,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
     alignSelf: 'center',
   },
-  logoText: { ...typography.h1, color: colors.text },
   title: { ...typography.display, color: colors.text, textAlign: 'center' },
   subtitle: { ...typography.body, color: colors.textDim, textAlign: 'center', marginBottom: 8 },
   field: {
