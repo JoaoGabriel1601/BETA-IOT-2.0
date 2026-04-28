@@ -1,8 +1,10 @@
 # Credenciais locais (NÃO commitar!)
 firmware/datacenter_iot/config.local.h
+dashboard/firebase-config.local.js
 **/secrets.json
 **/.env
-**/.env.local
+**/.env.*
+!**/.env.example
 
 # Build artifacts — Arduino / PlatformIO
 build/

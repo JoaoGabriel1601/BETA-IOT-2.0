@@ -6,19 +6,20 @@
  *
  * Uso:
  *   cd mobile
- *   node scripts/test-notifications.js
+ *   node --env-file=.env scripts/test-notifications.js
  *
  * Requisitos: app aberto no Expo Go + permissão de notificação concedida.
+ *             Node 20.6+ (pra suportar a flag --env-file).
  */
 
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, update, set } = require('firebase/database');
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyBbDHmU7dRi0_szTXgcFLm2bUTeEbk10kA',
-  authDomain: 'beta-iot-cf12a.firebaseapp.com',
-  databaseURL: 'https://beta-iot-cf12a-default-rtdb.firebaseio.com',
-  projectId: 'beta-iot-cf12a',
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
 };
 
 const DEVICE_ID = 'esp32-datacenter-001';

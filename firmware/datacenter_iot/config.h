@@ -2,25 +2,10 @@
 #define CONFIG_H
 
 // ================================================================
-// CONFIGURAÇÕES Wi-Fi
+// Credenciais (Wi-Fi, Firebase, DEVICE_ID) ficam em config.local.h,
+// que é gitignored. Copie config.example.h → config.local.h e preencha.
 // ================================================================
-#define WIFI_SSID         "Quarto do João"
-#define WIFI_PASSWORD     "81379767"
-
-// ================================================================
-// CONFIGURAÇÕES FIREBASE
-// ================================================================
-// FIREBASE_HOST: URL do Realtime Database SEM "https://" e SEM barra final
-//   Exemplo: "datacenter-iot-default-rtdb.firebaseio.com"
-//
-// FIREBASE_AUTH: "Database Secret" em Firebase Console
-//   → Configurações do Projeto → Contas de Serviço → Database Secrets
-//
-// DEVICE_ID: identificador único deste ESP32 (caracteres sem espaços)
-// ================================================================
-#define FIREBASE_HOST     "beta-iot-cf12a-default-rtdb.firebaseio.com"
-#define FIREBASE_AUTH     "FOxcFw4qRxxMX2BQiRXJaLLND4XkHfmQoGhWHzIm"
-#define DEVICE_ID         "esp32-datacenter-001"
+#include "config.local.h"
 
 // ================================================================
 // INTERVALOS DE TEMPO (milissegundos)
