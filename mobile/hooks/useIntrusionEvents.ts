@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { config } from '@/constants/config';
-import { acknowledgeEvent, subscribeIntrusionEvents } from '@/services/realtimeDatabase';
+import { acknowledgeEvent, subscribeIntrusionEvents } from '@/services/thingspeak';
 import type { IntrusionEventRecord } from '@/types/iot';
-
-import { useAuth } from './useAuth';
 
 export interface IntrusionEventsState {
   events: IntrusionEventRecord[];
@@ -17,7 +15,6 @@ export function useIntrusionEvents(
   deviceId: string = config.deviceId,
   limit: number = 20
 ): IntrusionEventsState {
-  const { user } = useAuth();
   const [events, setEvents] = useState<IntrusionEventRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,8 +27,8 @@ export function useIntrusionEvents(
   }, [deviceId, limit]);
 
   const acknowledge = useCallback(
-    (eventId: string) => acknowledgeEvent(deviceId, eventId, user?.email ?? null),
-    [deviceId, user?.email]
+    (eventId: string) => acknowledgeEvent(deviceId, eventId),
+    [deviceId]
   );
 
   const unacknowledgedCount = useMemo(

@@ -51,8 +51,8 @@ graph TB
     end
 
     subgraph Nuvem
-        FB[Firebase RTDB]
-        WEB[Dashboard Web]
+        TS[ThingSpeak]
+        WEB[Dashboard Web + App]
     end
 
     DHT -->|GPIO4| ESP
@@ -65,8 +65,8 @@ graph TB
     ESP -->|GPIO33| RL2
     ESP -->|GPIO2| LED
 
-    ESP <-->|HTTPS| FB
-    FB <-->|WebSocket| WEB
+    ESP -->|HTTP /update| TS
+    TS -->|polling REST| WEB
 ```
 
 ## Circuito detalhado

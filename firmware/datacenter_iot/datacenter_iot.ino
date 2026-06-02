@@ -16,14 +16,15 @@
  *    - Relé Diesel   (GPIO 33)
  *    - LED onboard   (GPIO 2)
  *
- *  Nuvem: Firebase Realtime Database (REST API, HTTPS)
+ *  Nuvem: ThingSpeak (HTTP, API de canal — 8 campos)
+ *    field1=temp  field2=umid  field3=luz   field4=tensao
+ *    field5=mov.   field6=fonte field7=alarme field8=uptime_s
+ *    status=descricao da invasao (quando houver)
  * ================================================================
  */
 
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
-#include <ArduinoJson.h>
 #include <DHT.h>
 #include <math.h>
 #include "config.h"
@@ -69,6 +70,10 @@ String energySource = "solar";
 unsigned long lastSendTime   = 0;
 unsigned long alarmStartTime = 0;
 unsigned long lastMotionTime = 0;
+
+// Texto de status (descrição da invasão) a enviar no próximo update.
+// Só é limpo após o ThingSpeak confirmar o recebimento.
+String pendingStatus = "";
 
 // Controle de comutação
 bool lastDayState = true;
@@ -125,7 +130,7 @@ void loop() {
     handleMotionAlarm();
 
     if (millis() - lastSendTime >= SEND_INTERVAL) {
-        sendDataToFirebase();
+        sendDataToThingSpeak();
         lastSendTime = millis();
     }
 
@@ -238,121 +243,84 @@ void handleMotionAlarm() {
 }
 
 // ================================================================
-// COMUNICAÇÃO COM FIREBASE
+// COMUNICAÇÃO COM THINGSPEAK
 // ================================================================
-void sendDataToFirebase() {
+// Codifica uma string para uso seguro em query string (status).
+String urlEncode(const String &s) {
+    String out = "";
+    char buf[4];
+    for (size_t i = 0; i < s.length(); i++) {
+        char c = s.charAt(i);
+        if (isalnum((unsigned char)c)) {
+            out += c;
+        } else if (c == ' ') {
+            out += "%20";
+        } else {
+            snprintf(buf, sizeof(buf), "%%%02X", (uint8_t)c);
+            out += buf;
+        }
+    }
+    return out;
+}
+
+// Envia todas as grandezas em um único GET /update (8 campos + status).
+void sendDataToThingSpeak() {
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("[ERRO] Wi-Fi desconectado!");
         connectWiFi();
         return;
     }
 
-    StaticJsonDocument<512> doc;
-    doc["temperature"]     = round(temperature * 10) / 10.0;
-    doc["humidity"]        = round(humidity * 10) / 10.0;
-    doc["light_level"]     = round(lightLevel * 10) / 10.0;
-    doc["motion_detected"] = motionDetected;
-    doc["voltage_ac"]      = round(voltageAC * 10) / 10.0;
-    doc["energy_source"]   = energySource;
-    doc["alarm_active"]    = alarmActive;
-    doc["relay_solar"]     = solarActive;
-    doc["relay_diesel"]    = dieselActive;
-    doc["uptime_ms"]       = millis();
+    int motionFlag = motionDetected ? 1 : 0;
+    int energyCode = (energySource == "solar") ? 1 : 0;  // 1=solar, 0=diesel
+    int alarmFlag  = alarmActive ? 1 : 0;
+    unsigned long uptimeS = millis() / 1000;
 
-    JsonObject tsObj = doc.createNestedObject("timestamp");
-    tsObj[".sv"] = "timestamp";
-
-    String jsonBody;
-    serializeJson(doc, jsonBody);
-
-    // 1) Estado atual (PUT sobrescreve)
-    {
-        HTTPClient http;
-        String url = "https://" + String(FIREBASE_HOST)
-                     + "/datacenter/devices/" + String(DEVICE_ID)
-                     + "/current.json?auth=" + String(FIREBASE_AUTH);
-        http.begin(url);
-        http.addHeader("Content-Type", "application/json");
-        int code = http.PUT(jsonBody);
-        if (code == 200) {
-            Serial.println("[FIREBASE] Estado atual atualizado");
-        } else {
-            Serial.printf("[FIREBASE] Erro ao atualizar estado: %d\n", code);
-            Serial.println("[FIREBASE] " + http.getString());
-        }
-        http.end();
+    String url = "http://" + String(THINGSPEAK_HOST) + "/update";
+    url += "?api_key=" + String(THINGSPEAK_WRITE_API_KEY);
+    url += "&field1=" + String(temperature, 1);
+    url += "&field2=" + String(humidity, 1);
+    url += "&field3=" + String(lightLevel, 1);
+    url += "&field4=" + String(voltageAC, 1);
+    url += "&field5=" + String(motionFlag);
+    url += "&field6=" + String(energyCode);
+    url += "&field7=" + String(alarmFlag);
+    url += "&field8=" + String(uptimeS);
+    if (pendingStatus.length() > 0) {
+        url += "&status=" + urlEncode(pendingStatus);
     }
-
-    // 2) Histórico (POST gera ID único)
-    {
-        HTTPClient http;
-        String url = "https://" + String(FIREBASE_HOST)
-                     + "/datacenter/readings/" + String(DEVICE_ID)
-                     + ".json?auth=" + String(FIREBASE_AUTH);
-        http.begin(url);
-        http.addHeader("Content-Type", "application/json");
-        int code = http.POST(jsonBody);
-        if (code == 200) {
-            Serial.println("[FIREBASE] Historico salvo: " + http.getString());
-        } else {
-            Serial.printf("[FIREBASE] Erro ao salvar historico: %d\n", code);
-        }
-        http.end();
-    }
-
-    // 3) Info do dispositivo (last_seen)
-    {
-        HTTPClient http;
-        String url = "https://" + String(FIREBASE_HOST)
-                     + "/datacenter/devices/" + String(DEVICE_ID)
-                     + "/info.json?auth=" + String(FIREBASE_AUTH);
-
-        StaticJsonDocument<192> info;
-        info["name"]     = "Datacenter Principal";
-        info["location"] = "Sala de Servidores";
-        info["ip"]       = WiFi.localIP().toString();
-        info["rssi"]     = WiFi.RSSI();
-        JsonObject ls = info.createNestedObject("last_seen");
-        ls[".sv"] = "timestamp";
-
-        String body;
-        serializeJson(info, body);
-
-        http.begin(url);
-        http.addHeader("Content-Type", "application/json");
-        http.PUT(body);
-        http.end();
-    }
-}
-
-void sendIntrusionEvent(const char* eventType, const char* description) {
-    if (WiFi.status() != WL_CONNECTED) return;
 
     HTTPClient http;
-    String url = "https://" + String(FIREBASE_HOST)
-                 + "/datacenter/intrusion_events/" + String(DEVICE_ID)
-                 + ".json?auth=" + String(FIREBASE_AUTH);
-
-    StaticJsonDocument<256> doc;
-    doc["event_type"]   = eventType;
-    doc["description"]  = description;
-    doc["acknowledged"] = false;
-    JsonObject ts = doc.createNestedObject("timestamp");
-    ts[".sv"] = "timestamp";
-
-    String body;
-    serializeJson(doc, body);
-
     http.begin(url);
-    http.addHeader("Content-Type", "application/json");
-    int code = http.POST(body);
+    int code = http.GET();
 
     if (code == 200) {
-        Serial.printf("[FIREBASE] Evento '%s' registrado\n", eventType);
+        String entryId = http.getString();
+        if (entryId == "0") {
+            // ThingSpeak rejeita (geralmente por exceder 1 envio/15s)
+            Serial.println("[THINGSPEAK] Envio rejeitado (limite de 15s)");
+        } else {
+            Serial.println("[THINGSPEAK] Dados enviados. Entry #" + entryId);
+            pendingStatus = "";  // só limpa após confirmação
+        }
     } else {
-        Serial.printf("[FIREBASE] Erro ao registrar evento: %d\n", code);
+        Serial.printf("[THINGSPEAK] Erro HTTP: %d\n", code);
     }
     http.end();
+}
+
+// Registra um evento de invasão: marca o texto de status e tenta enviar
+// imediatamente, desde que respeitado o limite de 15s do ThingSpeak.
+void sendIntrusionEvent(const char* eventType, const char* description) {
+    pendingStatus = String(eventType) + ": " + String(description);
+    Serial.printf("[EVENTO] %s\n", pendingStatus.c_str());
+
+    if (WiFi.status() == WL_CONNECTED && (millis() - lastSendTime >= 15000)) {
+        sendDataToThingSpeak();
+        lastSendTime = millis();
+    } else {
+        Serial.println("[EVENTO] Sera enviado no proximo ciclo (limite de 15s)");
+    }
 }
 
 // ================================================================

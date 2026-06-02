@@ -2,9 +2,7 @@ import { useEffect, useRef } from 'react';
 
 import { config } from '@/constants/config';
 import { ensureNotificationSetup, sendAlert } from '@/services/notifications';
-import { subscribeCurrent, subscribeIntrusionEvents } from '@/services/realtimeDatabase';
-
-import { useAuth } from './useAuth';
+import { subscribeCurrent, subscribeIntrusionEvents } from '@/services/thingspeak';
 
 function formatTime(ts: number): string {
   try {
@@ -20,13 +18,10 @@ function formatTime(ts: number): string {
 const FRESH_WINDOW_MS = 30_000;
 
 export function useAlertNotifications(deviceId: string = config.deviceId): void {
-  const { user } = useAuth();
   const lastAlarmRef = useRef<boolean | null>(null);
   const seenEventIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!user) return;
-
     const sessionStart = Date.now();
     let active = true;
     let unsubCurrent: (() => void) | null = null;
@@ -86,5 +81,5 @@ export function useAlertNotifications(deviceId: string = config.deviceId): void 
       unsubCurrent?.();
       unsubEvents?.();
     };
-  }, [deviceId, user]);
+  }, [deviceId]);
 }

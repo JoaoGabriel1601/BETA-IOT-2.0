@@ -1,69 +1,60 @@
 /* eslint-disable */
 /**
- * Dispara dois eventos no Firebase RTDB pra testar as notificações locais do app:
- *   1) alarm_active: false -> true -> false (dispara "Intrusão detectada")
- *   2) cria um novo intrusion_event com acknowledged=false (dispara "Novo evento")
+ * Dispara um evento de intrusão no canal do ThingSpeak para testar as
+ * notificações locais do app (e o dashboard web):
+ *   1) envia field7=1 (alarme) + status="motion_detected: ..."
+ *      -> dispara "Intrusão detectada" e "Novo evento"
+ *   2) ~20s depois, envia field7=0 (alarme limpo)
  *
  * Uso:
  *   cd mobile
- *   node --env-file=.env scripts/test-notifications.js
+ *   THINGSPEAK_WRITE_API_KEY=SUA_WRITE_KEY node scripts/test-notifications.js
+ *   (ou adicione THINGSPEAK_WRITE_API_KEY ao .env e rode:
+ *    node --env-file=.env scripts/test-notifications.js)
  *
  * Requisitos: app aberto no Expo Go + permissão de notificação concedida.
- *             Node 20.6+ (pra suportar a flag --env-file).
+ *             Node 18+ (fetch nativo). ThingSpeak free: 1 envio a cada 15s.
  */
 
-const { initializeApp } = require('firebase/app');
-const { getDatabase, ref, update, set } = require('firebase/database');
+const WRITE_KEY = process.env.THINGSPEAK_WRITE_API_KEY;
+const HOST = 'https://api.thingspeak.com/update';
 
-const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-};
-
-const DEVICE_ID = 'esp32-datacenter-001';
-const CURRENT_PATH = `datacenter/devices/${DEVICE_ID}/current`;
-const EVENTS_PATH = `datacenter/intrusion_events/${DEVICE_ID}`;
+if (!WRITE_KEY) {
+  console.error('Defina THINGSPEAK_WRITE_API_KEY (Write API Key do canal).');
+  process.exit(1);
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+async function send(fields) {
+  const params = new URLSearchParams({ api_key: WRITE_KEY, ...fields });
+  const res = await fetch(`${HOST}?${params.toString()}`);
+  const entry = await res.text();
+  if (entry === '0') throw new Error('ThingSpeak rejeitou o envio (limite de 15s?).');
+  return entry;
+}
+
 async function main() {
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-
-  console.log('[1/3] Setando alarm_active = true (deve disparar "Intrusão detectada")...');
-  await update(ref(db, CURRENT_PATH), {
-    alarm_active: true,
-    timestamp: Date.now(),
+  console.log('[1/2] Enviando alarme (field7=1) + status (deve disparar notificações)...');
+  const id1 = await send({
+    field1: '25.0', field2: '55.0', field3: '70', field4: '127.0',
+    field5: '1', field6: '1', field7: '1', field8: '0',
+    status: 'motion_detected: Evento de teste gerado pelo script',
   });
-  console.log('      ✓ alarm_active = true');
+  console.log(`      ✓ entry #${id1}`);
 
-  await sleep(5000);
-
-  console.log('[2/3] Criando novo evento de intrusão (deve disparar "Novo evento")...');
-  const eventId = `test-${Date.now()}`;
-  await set(ref(db, `${EVENTS_PATH}/${eventId}`), {
-    event_type: 'motion_detected',
-    description: 'Evento de teste gerado pelo script',
-    acknowledged: false,
-    timestamp: Date.now(),
+  console.log('[2/2] Aguardando 20s (limite do ThingSpeak) e limpando o alarme...');
+  await sleep(20000);
+  const id2 = await send({
+    field1: '25.0', field2: '55.0', field3: '70', field4: '127.0',
+    field5: '0', field6: '1', field7: '0', field8: '20',
   });
-  console.log(`      ✓ evento criado: ${eventId}`);
+  console.log(`      ✓ entry #${id2}`);
 
-  await sleep(5000);
-
-  console.log('[3/3] Voltando alarm_active para false...');
-  await update(ref(db, CURRENT_PATH), {
-    alarm_active: false,
-    timestamp: Date.now(),
-  });
-  console.log('      ✓ alarm_active = false');
-
-  console.log('\nConcluído. Confira o celular:');
-  console.log('  - 2 notificações devem ter aparecido');
-  console.log('  - 1 novo evento na aba Intrusão');
-  console.log('  - Dashboard card Alarme voltou pra "OK"');
+  console.log('\nConcluído. Confira o celular e o dashboard:');
+  console.log('  - notificação "Intrusão detectada" deve ter aparecido');
+  console.log('  - 1 novo evento na aba Intrusão (motion_detected)');
+  console.log('  - card Alarme volta para "OK" após o 2º envio');
   process.exit(0);
 }
 

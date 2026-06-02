@@ -1,17 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GlassContainer } from '@/components/iot/GlassContainer';
 import { StatusIndicator } from '@/components/iot/StatusIndicator';
 import { config } from '@/constants/config';
 import { thresholds } from '@/constants/thresholds';
-import { useAuth } from '@/hooks/useAuth';
 import { useDeviceData } from '@/hooks/useDeviceData';
-import { signOut } from '@/services/auth';
 import { colors } from '@/theme/colors';
 import { gradients } from '@/theme/gradients';
 import { typography } from '@/theme/typography';
@@ -43,29 +39,7 @@ function Row({ icon, label, value, gradient = gradients.brand }: RowProps) {
 }
 
 export default function SettingsScreen() {
-  const { user } = useAuth();
   const { info, online } = useDeviceData();
-  const [signingOut, setSigningOut] = useState(false);
-
-  const confirmSignOut = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    Alert.alert('Sair', 'Deseja encerrar a sessão?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          setSigningOut(true);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-          try {
-            await signOut();
-          } finally {
-            setSigningOut(false);
-          }
-        },
-      },
-    ]);
-  };
 
   const lastSeen = info?.last_seen
     ? new Date(info.last_seen).toLocaleString('pt-BR')
@@ -76,29 +50,6 @@ export default function SettingsScreen() {
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.title}>Configurações</Text>
-
-          <GlassContainer padding={16} radius={20}>
-            <Text style={styles.sectionLabel}>Conta</Text>
-            <Row
-              icon="person-circle"
-              label="Email"
-              value={user?.email ?? '--'}
-              gradient={gradients.brand}
-            />
-            <Pressable
-              onPress={confirmSignOut}
-              disabled={signingOut}
-              style={({ pressed }) => [
-                styles.signOut,
-                (pressed || signingOut) && { opacity: 0.7 },
-              ]}
-            >
-              <Ionicons name="log-out-outline" size={18} color="#fff" />
-              <Text style={styles.signOutText}>
-                {signingOut ? 'Saindo...' : 'Sair'}
-              </Text>
-            </Pressable>
-          </GlassContainer>
 
           <GlassContainer padding={16} radius={20}>
             <View style={styles.sectionHeader}>
@@ -113,32 +64,14 @@ export default function SettingsScreen() {
             />
             <Row
               icon="pricetag"
-              label="Nome"
+              label="Canal"
               value={info?.name ?? '--'}
               gradient={gradients.accent}
             />
             <Row
-              icon="location"
-              label="Localização"
-              value={info?.location ?? '--'}
-              gradient={gradients.accent}
-            />
-            <Row
-              icon="wifi"
-              label="IP"
-              value={info?.ip ?? '--'}
-              gradient={gradients.accent}
-            />
-            <Row
-              icon="cellular"
-              label="RSSI"
-              value={info?.rssi != null ? `${info.rssi} dBm` : '--'}
-              gradient={gradients.accent}
-            />
-            <Row
-              icon="code-working"
-              label="Firmware"
-              value={info?.firmware_version ?? '--'}
+              icon="link"
+              label="Channel ID"
+              value={config.thingspeak.channelId || '--'}
               gradient={gradients.accent}
             />
             <Row
@@ -188,7 +121,7 @@ export default function SettingsScreen() {
             <Row
               icon="cloud"
               label="Backend"
-              value="Firebase Realtime Database"
+              value="ThingSpeak"
               gradient={gradients.brand}
             />
             <Row
@@ -238,18 +171,4 @@ const styles = StyleSheet.create({
   },
   rowLabel: { ...typography.caption, color: colors.textDim },
   rowValue: { ...typography.bodyStrong, color: colors.text, marginTop: 2 },
-  signOut: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: colors.danger,
-  },
-  signOutText: {
-    ...typography.bodyStrong,
-    color: '#fff',
-  },
 });

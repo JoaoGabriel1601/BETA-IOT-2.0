@@ -1,6 +1,6 @@
 # Credenciais locais (NÃO commitar!)
 firmware/datacenter_iot/config.local.h
-dashboard/firebase-config.local.js
+dashboard/thingspeak-config.local.js
 **/secrets.json
 **/.env
 **/.env.*
@@ -14,11 +14,6 @@ build/
 *.elf
 *.hex
 *.map
-
-# Firebase Hosting / CLI
-.firebase/
-.firebaserc
-firebase-debug.log
 
 # Node
 node_modules/

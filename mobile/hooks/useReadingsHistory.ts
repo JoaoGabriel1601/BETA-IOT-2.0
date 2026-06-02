@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { config } from '@/constants/config';
-import { subscribeReadingsHistory } from '@/services/realtimeDatabase';
+import { subscribeReadingsHistory } from '@/services/thingspeak';
 import type { HistoricalReading } from '@/types/iot';
 
 export interface ReadingsHistory {

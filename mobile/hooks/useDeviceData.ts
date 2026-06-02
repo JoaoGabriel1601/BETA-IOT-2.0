@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { config } from '@/constants/config';
 import { thresholds } from '@/constants/thresholds';
-import { subscribeCurrent, subscribeDeviceInfo } from '@/services/realtimeDatabase';
+import { subscribeCurrent, subscribeDeviceInfo } from '@/services/thingspeak';
 import type { CurrentReading, DeviceInfo } from '@/types/iot';
 
 export interface DeviceData {

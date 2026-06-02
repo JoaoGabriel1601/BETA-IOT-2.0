@@ -1,19 +1,19 @@
 /* ================================================================
- *  Datacenter IoT — Dashboard (Firebase Realtime Database + Auth)
+ *  Datacenter IoT — Dashboard (ThingSpeak, polling via REST)
  * ================================================================ */
 
 // ============================================
 // CONFIGURAÇÃO
 // ============================================
-// Credenciais carregadas via firebase-config.local.js (gitignored).
-// Copie firebase-config.example.js → firebase-config.local.js e preencha os valores.
-const firebaseConfig = window.firebaseConfig;
+// Credenciais carregadas via thingspeak-config.local.js (gitignored).
+// Copie thingspeak-config.example.js → thingspeak-config.local.js e preencha.
+const TS = window.thingspeakConfig || { channelId: "", readApiKey: "" };
 
-const DEVICE_ID = "esp32-datacenter-001";
 const MAX_POINTS = 50;
 const MAX_EVENTS = 20;
+const POLL_INTERVAL_MS = 15_000;   // ThingSpeak free: 1 leitura a cada 15s
 const OFFLINE_AFTER_MS = 120_000;
-const STATUS_RECHECK_MS = 15_000;
+const ACK_STORAGE_KEY = "datacenter_acked_events";
 
 const THRESHOLDS = {
     tempHigh: 28, tempLow: 15,
@@ -22,28 +22,11 @@ const THRESHOLDS = {
 };
 
 // ============================================
-// INIT FIREBASE
-// ============================================
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const auth = firebase.auth();
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-
-// ============================================
 // ELEMENTOS DO DOM
 // ============================================
 const $ = (id) => document.getElementById(id);
 
 const el = {
-    body: document.body,
-    loginOverlay: $("login-overlay"),
-    loginForm: $("login-form"),
-    loginEmail: $("login-email"),
-    loginPassword: $("login-password"),
-    loginError: $("login-error"),
-    loginSubmit: $("login-submit"),
-    userEmail: $("user-email"),
-    logoutBtn: $("logout-btn"),
     status: $("connection-status"),
     deviceInfo: $("device-info"),
     temp: $("val-temp"),
@@ -57,6 +40,46 @@ const el = {
     cardVolt: $("card-volt"),
     intrusion: $("intrusion-list")
 };
+
+// ============================================
+// MAPEAMENTO ThingSpeak (field1..8) → leitura
+// ============================================
+function num(v) {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+}
+
+function mapFeed(f) {
+    return {
+        temperature: num(f.field1),
+        humidity: num(f.field2),
+        light_level: num(f.field3),
+        voltage_ac: num(f.field4),
+        motion_detected: f.field5 === "1",
+        energy_source: f.field6 === "1" ? "solar" : "diesel",
+        alarm_active: f.field7 === "1",
+        uptime_s: num(f.field8),
+        timestamp: Date.parse(f.created_at),
+        status: (f.status || "").trim(),
+        entry_id: f.entry_id
+    };
+}
+
+// ============================================
+// ACK LOCAL (localStorage — ThingSpeak não persiste)
+// ============================================
+function loadAcked() {
+    try {
+        return new Set(JSON.parse(localStorage.getItem(ACK_STORAGE_KEY) || "[]"));
+    } catch {
+        return new Set();
+    }
+}
+const ackedEvents = loadAcked();
+
+function persistAcked() {
+    localStorage.setItem(ACK_STORAGE_KEY, JSON.stringify([...ackedEvents]));
+}
 
 // ============================================
 // GRÁFICOS (Chart.js)
@@ -102,160 +125,58 @@ const charts = {
     volt: makeChart("chart-volt", "Tensão AC", "#a78bfa")
 };
 
-function pushPoint(chart, label, value) {
-    chart.data.labels.push(label);
-    chart.data.datasets[0].data.push(value);
-    if (chart.data.labels.length > MAX_POINTS) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
+function rebuildCharts(readings) {
+    const labels = readings.map((r) =>
+        r.timestamp
+            ? new Date(r.timestamp).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit", minute: "2-digit", second: "2-digit"
+              })
+            : ""
+    );
+    const fill = (chart, key) => {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = readings.map((r) => r[key]);
+        chart.update("none");
+    };
+    fill(charts.temp, "temperature");
+    fill(charts.hum, "humidity");
+    fill(charts.light, "light_level");
+    fill(charts.volt, "voltage_ac");
+}
+
+// ============================================
+// FETCH ThingSpeak
+// ============================================
+function feedsUrl() {
+    if (!TS.channelId) return null;
+    let url = `https://api.thingspeak.com/channels/${TS.channelId}/feeds.json`
+            + `?results=${MAX_POINTS}&status=true`;
+    if (TS.readApiKey) url += `&api_key=${TS.readApiKey}`;
+    return url;
+}
+
+async function poll() {
+    const url = feedsUrl();
+    if (!url) {
+        el.deviceInfo.textContent = "Configure o Channel ID em thingspeak-config.local.js";
+        return;
     }
-    chart.update("none");
-}
-
-function resetCharts() {
-    Object.values(charts).forEach((c) => {
-        c.data.labels = [];
-        c.data.datasets[0].data = [];
-        c.update("none");
-    });
-}
-
-// ============================================
-// LISTENERS RTDB (anexados só após login)
-// ============================================
-const currentRef = db.ref(`datacenter/devices/${DEVICE_ID}/current`);
-const infoRef = db.ref(`datacenter/devices/${DEVICE_ID}/info`);
-const readingsQuery = db
-    .ref(`datacenter/readings/${DEVICE_ID}`)
-    .orderByChild("timestamp")
-    .limitToLast(MAX_POINTS);
-const intrusionRef = db.ref(`datacenter/intrusion_events/${DEVICE_ID}`);
-const intrusionQuery = intrusionRef
-    .orderByChild("timestamp")
-    .limitToLast(MAX_EVENTS);
-
-let listenersAttached = false;
-let latestCurrent = null;
-let latestInfo = null;
-let statusTimer = null;
-
-const handlers = {
-    current: (snap) => {
-        latestCurrent = snap.val();
-        evaluateStatus();
-    },
-    info: (snap) => {
-        latestInfo = snap.val();
-        renderDeviceInfo();
-        evaluateStatus();
-    },
-    reading: (snap) => {
-        const r = snap.val();
-        const t = r.timestamp ? new Date(r.timestamp) : new Date();
-        const label = t.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-        pushPoint(charts.temp, label, r.temperature);
-        pushPoint(charts.hum, label, r.humidity);
-        pushPoint(charts.light, label, r.light_level);
-        pushPoint(charts.volt, label, r.voltage_ac);
-    },
-    intrusionAdded: (snap) => addIntrusionEvent(snap.key, snap.val()),
-    intrusionChanged: (snap) => addIntrusionEvent(snap.key, snap.val(), true)
-};
-
-function attachListeners() {
-    if (listenersAttached) return;
-    currentRef.on("value", handlers.current);
-    infoRef.on("value", handlers.info);
-    readingsQuery.on("child_added", handlers.reading);
-    intrusionQuery.on("child_added", handlers.intrusionAdded);
-    intrusionRef.on("child_changed", handlers.intrusionChanged);
-    listenersAttached = true;
-    statusTimer = setInterval(evaluateStatus, STATUS_RECHECK_MS);
-}
-
-function detachListeners() {
-    if (!listenersAttached) return;
-    currentRef.off("value", handlers.current);
-    infoRef.off("value", handlers.info);
-    readingsQuery.off("child_added", handlers.reading);
-    intrusionQuery.off("child_added", handlers.intrusionAdded);
-    intrusionRef.off("child_changed", handlers.intrusionChanged);
-    listenersAttached = false;
-    if (statusTimer) { clearInterval(statusTimer); statusTimer = null; }
-    latestCurrent = null;
-    latestInfo = null;
-}
-
-// ============================================
-// AUTH
-// ============================================
-function mapAuthError(code) {
-    switch (code) {
-        case "auth/invalid-email": return "Email inválido.";
-        case "auth/user-disabled": return "Usuário desativado.";
-        case "auth/user-not-found":
-        case "auth/wrong-password":
-        case "auth/invalid-credential": return "Email ou senha incorretos.";
-        case "auth/too-many-requests": return "Muitas tentativas. Aguarde alguns minutos.";
-        case "auth/network-request-failed": return "Sem conexão com a internet.";
-        default: return "Não foi possível entrar. Tente novamente.";
-    }
-}
-
-function setLoginError(message) {
-    if (!message) {
-        el.loginError.hidden = true;
-        el.loginError.textContent = "";
-    } else {
-        el.loginError.hidden = false;
-        el.loginError.textContent = message;
-    }
-}
-
-el.loginForm.addEventListener("submit", async (ev) => {
-    ev.preventDefault();
-    const email = el.loginEmail.value.trim();
-    const password = el.loginPassword.value;
-    if (!email || !password) return;
-
-    setLoginError(null);
-    el.loginSubmit.disabled = true;
-    el.loginSubmit.textContent = "Entrando...";
     try {
-        await auth.signInWithEmailAndPassword(email, password);
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const feeds = Array.isArray(json.feeds) ? json.feeds : [];
+        const readings = feeds.map(mapFeed).filter((r) => r.timestamp);
+
+        rebuildCharts(readings);
+        renderEvents(readings);
+        renderDeviceInfo(json.channel, readings);
+        evaluateStatus(readings);
     } catch (err) {
-        setLoginError(mapAuthError(err.code));
-    } finally {
-        el.loginSubmit.disabled = false;
-        el.loginSubmit.textContent = "Entrar";
-    }
-});
-
-el.logoutBtn.addEventListener("click", async () => {
-    await auth.signOut();
-});
-
-auth.onAuthStateChanged((user) => {
-    if (user) {
-        el.body.classList.remove("unauthenticated");
-        el.body.classList.add("authenticated");
-        el.userEmail.textContent = user.email || "";
-        el.loginPassword.value = "";
-        setLoginError(null);
-        attachListeners();
-    } else {
-        detachListeners();
-        resetCharts();
-        renderedEvents.forEach((node) => node.remove());
-        renderedEvents.clear();
+        console.error("[ThingSpeak] Falha ao buscar feed:", err);
         setStatus(false);
-        clearCards();
-        el.deviceInfo.textContent = "Aguardando dispositivo...";
-        el.userEmail.textContent = "";
-        el.body.classList.remove("authenticated");
-        el.body.classList.add("unauthenticated");
     }
-});
+}
 
 // ============================================
 // RENDERIZAÇÃO
@@ -270,16 +191,12 @@ function setStatus(online) {
     }
 }
 
-function computeOnline() {
-    const ts = latestCurrent?.timestamp ?? latestInfo?.last_seen ?? 0;
-    return ts > 0 && (Date.now() - ts) < OFFLINE_AFTER_MS;
-}
-
-function evaluateStatus() {
-    const online = computeOnline();
+function evaluateStatus(readings) {
+    const last = readings[readings.length - 1];
+    const online = !!last && last.timestamp > 0 && (Date.now() - last.timestamp) < OFFLINE_AFTER_MS;
     setStatus(online);
-    if (online && latestCurrent) {
-        updateCards(latestCurrent);
+    if (online) {
+        updateCards(last);
     } else {
         clearCards();
     }
@@ -299,26 +216,23 @@ function clearCards() {
     el.cardVolt.className = "card";
 }
 
-function renderDeviceInfo() {
-    const info = latestInfo;
-    if (!info) {
-        el.deviceInfo.textContent = "Aguardando dispositivo...";
-        return;
-    }
-    const ls = info.last_seen ? new Date(info.last_seen).toLocaleString("pt-BR") : "?";
-    el.deviceInfo.textContent = `${info.name || DEVICE_ID} · ${info.location || ""} · último: ${ls}`;
+function renderDeviceInfo(channel, readings) {
+    const last = readings[readings.length - 1];
+    const name = channel?.name || `Canal ${TS.channelId}`;
+    const ls = last?.timestamp ? new Date(last.timestamp).toLocaleString("pt-BR") : "?";
+    el.deviceInfo.textContent = `${name} · último: ${ls}`;
 }
 
 function updateCards(d) {
-    el.temp.textContent = d.temperature?.toFixed(1) ?? "--";
-    el.hum.textContent = d.humidity?.toFixed(1) ?? "--";
-    el.light.textContent = d.light_level?.toFixed(0) ?? "--";
-    el.volt.textContent = d.voltage_ac?.toFixed(1) ?? "--";
+    el.temp.textContent = d.temperature != null ? d.temperature.toFixed(1) : "--";
+    el.hum.textContent = d.humidity != null ? d.humidity.toFixed(1) : "--";
+    el.light.textContent = d.light_level != null ? d.light_level.toFixed(0) : "--";
+    el.volt.textContent = d.voltage_ac != null ? d.voltage_ac.toFixed(1) : "--";
 
     if (d.energy_source === "solar") {
         el.energy.textContent = "☀ SOLAR";
         el.energy.className = "solar";
-    } else if (d.energy_source === "diesel") {
+    } else {
         el.energy.textContent = "⛽ DIESEL";
         el.energy.className = "diesel";
     }
@@ -332,10 +246,10 @@ function updateCards(d) {
     }
 
     el.cardTemp.className = "card" + (
-        d.temperature > THRESHOLDS.tempHigh || d.temperature < THRESHOLDS.tempLow ? " warning" : ""
+        d.temperature != null && (d.temperature > THRESHOLDS.tempHigh || d.temperature < THRESHOLDS.tempLow) ? " warning" : ""
     );
     el.cardHum.className = "card" + (
-        d.humidity > THRESHOLDS.humHigh || d.humidity < THRESHOLDS.humLow ? " warning" : ""
+        d.humidity != null && (d.humidity > THRESHOLDS.humHigh || d.humidity < THRESHOLDS.humLow) ? " warning" : ""
     );
     el.cardVolt.className = "card" + (
         d.voltage_ac > THRESHOLDS.voltHigh ? " danger" :
@@ -343,54 +257,63 @@ function updateCards(d) {
     );
 }
 
-const renderedEvents = new Map();
+// ============================================
+// EVENTOS DE INTRUSÃO
+// Reconstruídos a partir do campo `status` (preenchido pelo
+// firmware só quando há evento). Cada entrada com status = 1 evento.
+// ============================================
+function parseEvent(reading) {
+    const idx = reading.status.indexOf(":");
+    if (idx === -1) {
+        return { type: reading.status, desc: "" };
+    }
+    return {
+        type: reading.status.slice(0, idx).trim(),
+        desc: reading.status.slice(idx + 1).trim()
+    };
+}
 
-function addIntrusionEvent(key, data, updated = false) {
-    const empty = el.intrusion.querySelector(".empty");
-    if (empty) empty.remove();
+function renderEvents(readings) {
+    const events = readings
+        .filter((r) => r.status.length > 0)
+        .map((r) => {
+            const { type, desc } = parseEvent(r);
+            const id = String(r.entry_id);
+            return { id, type, desc, timestamp: r.timestamp, acknowledged: ackedEvents.has(id) };
+        })
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, MAX_EVENTS);
 
-    let node = renderedEvents.get(key);
-    if (node) {
-        node.classList.toggle("acknowledged", !!data.acknowledged);
-        const btn = node.querySelector(".event-btn");
-        if (btn && data.acknowledged) { btn.disabled = true; btn.textContent = "Reconhecido"; }
+    el.intrusion.innerHTML = "";
+
+    if (events.length === 0) {
+        const p = document.createElement("p");
+        p.className = "empty";
+        p.textContent = "Nenhum evento registrado.";
+        el.intrusion.appendChild(p);
         return;
     }
 
-    node = document.createElement("div");
-    node.className = "event" + (data.acknowledged ? " acknowledged" : "");
-
-    const when = data.timestamp
-        ? new Date(data.timestamp).toLocaleString("pt-BR")
-        : "?";
-
-    node.innerHTML = `
-        <div class="event-info">
-            <div class="event-type">${escapeHtml(data.event_type || "event")}</div>
-            <div class="event-desc">${escapeHtml(data.description || "")}</div>
-            <div class="event-time">${when}</div>
-        </div>
-        <button class="event-btn" ${data.acknowledged ? "disabled" : ""}>
-            ${data.acknowledged ? "Reconhecido" : "Reconhecer"}
-        </button>
-    `;
-
-    node.querySelector(".event-btn").addEventListener("click", () => {
-        intrusionRef.child(key).update({
-            acknowledged: true,
-            acknowledged_at: Date.now(),
-            acknowledged_by: auth.currentUser?.email || "unknown"
+    for (const ev of events) {
+        const node = document.createElement("div");
+        node.className = "event" + (ev.acknowledged ? " acknowledged" : "");
+        const when = ev.timestamp ? new Date(ev.timestamp).toLocaleString("pt-BR") : "?";
+        node.innerHTML = `
+            <div class="event-info">
+                <div class="event-type">${escapeHtml(ev.type || "event")}</div>
+                <div class="event-desc">${escapeHtml(ev.desc || "")}</div>
+                <div class="event-time">${when}</div>
+            </div>
+            <button class="event-btn" ${ev.acknowledged ? "disabled" : ""}>
+                ${ev.acknowledged ? "Reconhecido" : "Reconhecer"}
+            </button>
+        `;
+        node.querySelector(".event-btn").addEventListener("click", () => {
+            ackedEvents.add(ev.id);
+            persistAcked();
+            renderEvents(readings);
         });
-    });
-
-    el.intrusion.prepend(node);
-    renderedEvents.set(key, node);
-
-    if (renderedEvents.size > MAX_EVENTS) {
-        const oldest = Array.from(renderedEvents.keys())[0];
-        const oldNode = renderedEvents.get(oldest);
-        oldNode?.remove();
-        renderedEvents.delete(oldest);
+        el.intrusion.appendChild(node);
     }
 }
 
@@ -399,3 +322,9 @@ function escapeHtml(str) {
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[c]));
 }
+
+// ============================================
+// START
+// ============================================
+poll();
+setInterval(poll, POLL_INTERVAL_MS);

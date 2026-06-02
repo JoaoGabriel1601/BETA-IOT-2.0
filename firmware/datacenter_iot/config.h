@@ -2,15 +2,22 @@
 #define CONFIG_H
 
 // ================================================================
-// Credenciais (Wi-Fi, Firebase, DEVICE_ID) ficam em config.local.h,
+// Credenciais (Wi-Fi, ThingSpeak, DEVICE_ID) ficam em config.local.h,
 // que é gitignored. Copie config.example.h → config.local.h e preencha.
 // ================================================================
 #include "config.local.h"
 
 // ================================================================
+// ENDPOINT THINGSPEAK (fixo — não é segredo)
+// ================================================================
+#define THINGSPEAK_HOST      "api.thingspeak.com"
+
+// ================================================================
 // INTERVALOS DE TEMPO (milissegundos)
 // ================================================================
-#define SEND_INTERVAL        30000   // Envia dados a cada 30s
+// ThingSpeak (conta free) aceita no máximo 1 envio a cada 15s.
+// Usamos 20s para ter margem segura acima desse limite.
+#define SEND_INTERVAL        20000   // Envia dados a cada 20s
 #define ALARM_DURATION       10000   // Buzzer toca por 10s após invasão
 #define ENERGY_SWITCH_DELAY  3000    // Delay na comutação solar↔diesel
 
