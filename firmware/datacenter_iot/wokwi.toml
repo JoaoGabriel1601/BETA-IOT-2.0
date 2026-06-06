@@ -1,4 +1,0 @@
-[wokwi]
-version = 1
-firmware = 'datacenter_iot.ino.esp32.bin'
-elf = 'datacenter_iot.ino.elf'
