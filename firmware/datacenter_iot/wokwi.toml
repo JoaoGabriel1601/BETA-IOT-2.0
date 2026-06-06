@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = 'build/datacenter_iot.ino.merged.bin'
+elf = 'build/datacenter_iot.ino.elf'

@@ -8,6 +8,8 @@ dashboard/thingspeak-config.local.js
 
 # Build artifacts — Arduino / PlatformIO
 build/
+# Logs de simulação Wokwi CLI
+firmware/**/*.log
 .pio/
 .vscode/
 *.bin
@@ -32,3 +34,4 @@ skills-lock.json
 
 # JetBrains IDEs (Android Studio / IntelliJ)
 .idea/
+.vercel

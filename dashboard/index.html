@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Datacenter IoT — Monitoramento</title>
     <link rel="icon" type="image/png" href="logo.png">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3-dist">
 </head>
 <body>
     <!-- APP -->
@@ -40,6 +40,11 @@
                 <div class="card-label">Tensão AC</div>
                 <div class="card-value"><span id="val-volt">--</span> <small>V</small></div>
             </div>
+            <div class="card" id="card-dist">
+                <div class="card-icon"><ion-icon name="resize"></ion-icon></div>
+                <div class="card-label">Distância</div>
+                <div class="card-value"><span id="val-dist">--</span> <small>cm</small></div>
+            </div>
             <div class="card" id="card-energy">
                 <div class="card-icon"><ion-icon name="flame"></ion-icon></div>
                 <div class="card-label">Fonte de Energia</div>
@@ -70,6 +75,10 @@
                 <h3>Tensão AC (V)</h3>
                 <canvas id="chart-volt"></canvas>
             </div>
+            <div class="chart-container">
+                <h3>Distância (cm)</h3>
+                <canvas id="chart-dist"></canvas>
+            </div>
         </section>
 
         <!-- EVENTOS DE INTRUSÃO -->
@@ -92,7 +101,7 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.4.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://cdn.jsdelivr.net/npm/ionicons@7.4.0/dist/ionicons/ionicons.js"></script>
 
-    <script src="thingspeak-config.local.js"></script>
-    <script src="app.js"></script>
+    <script src="thingspeak-config.js?v=3-dist"></script>
+    <script src="app.js?v=3-dist"></script>
 </body>
 </html>

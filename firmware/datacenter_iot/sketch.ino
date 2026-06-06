@@ -228,7 +228,7 @@ void sendDataToThingSpeak() {
     url += "&field5=" + String(motionDetected ? 1 : 0);
     url += "&field6=" + String(energySource == "solar" ? 1 : 0);
     url += "&field7=" + String(alarmActive ? 1 : 0);
-    url += "&field8=" + String(millis() / 1000);
+    url += "&field8=" + String(distanceCm, 1);   // <<< CORRIGIDO: distancia HC-SR04 (cm), era millis()/1000
     if (pendingStatus.length() > 0) url += "&status=" + urlEncode(pendingStatus);
 
     HTTPClient http; http.begin(url); int code = http.GET();

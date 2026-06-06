@@ -19,7 +19,7 @@ export interface CurrentReading {
   alarm_active: boolean;
   relay_solar?: boolean;
   relay_diesel?: boolean;
-  uptime_ms?: number;
+  distance_cm?: number;
   timestamp: number;
 }
 

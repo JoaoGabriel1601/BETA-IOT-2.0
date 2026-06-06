@@ -18,7 +18,8 @@ const ACK_STORAGE_KEY = "datacenter_acked_events";
 const THRESHOLDS = {
     tempHigh: 28, tempLow: 15,
     humHigh: 70, humLow: 30,
-    voltLow: 100, voltHigh: 240
+    voltLow: 100, voltHigh: 240,
+    distNear: 100   // objeto a <=100cm dispara alerta de presença
 };
 
 // ============================================
@@ -33,11 +34,13 @@ const el = {
     hum: $("val-hum"),
     light: $("val-light"),
     volt: $("val-volt"),
+    dist: $("val-dist"),
     energy: $("val-energy"),
     alarm: $("val-alarm"),
     cardTemp: $("card-temp"),
     cardHum: $("card-hum"),
     cardVolt: $("card-volt"),
+    cardDist: $("card-dist"),
     intrusion: $("intrusion-list")
 };
 
@@ -58,7 +61,7 @@ function mapFeed(f) {
         motion_detected: f.field5 === "1",
         energy_source: f.field6 === "1" ? "solar" : "diesel",
         alarm_active: f.field7 === "1",
-        uptime_s: num(f.field8),
+        distance_cm: num(f.field8),
         timestamp: Date.parse(f.created_at),
         status: (f.status || "").trim(),
         entry_id: f.entry_id
@@ -122,7 +125,8 @@ const charts = {
     temp: makeChart("chart-temp", "Temperatura", "#ff4d6d"),
     hum: makeChart("chart-hum", "Umidade", "#4da8ff"),
     light: makeChart("chart-light", "Luminosidade", "#f5a623"),
-    volt: makeChart("chart-volt", "Tensão AC", "#a78bfa")
+    volt: makeChart("chart-volt", "Tensão AC", "#a78bfa"),
+    dist: makeChart("chart-dist", "Distância", "#21d4fd")
 };
 
 function rebuildCharts(readings) {
@@ -142,6 +146,7 @@ function rebuildCharts(readings) {
     fill(charts.hum, "humidity");
     fill(charts.light, "light_level");
     fill(charts.volt, "voltage_ac");
+    fill(charts.dist, "distance_cm");
 }
 
 // ============================================
@@ -207,6 +212,7 @@ function clearCards() {
     el.hum.textContent = "--";
     el.light.textContent = "--";
     el.volt.textContent = "--";
+    el.dist.textContent = "--";
     el.energy.textContent = "--";
     el.energy.className = "";
     el.alarm.textContent = "--";
@@ -214,6 +220,7 @@ function clearCards() {
     el.cardTemp.className = "card";
     el.cardHum.className = "card";
     el.cardVolt.className = "card";
+    el.cardDist.className = "card";
 }
 
 function renderDeviceInfo(channel, readings) {
@@ -228,6 +235,7 @@ function updateCards(d) {
     el.hum.textContent = d.humidity != null ? d.humidity.toFixed(1) : "--";
     el.light.textContent = d.light_level != null ? d.light_level.toFixed(0) : "--";
     el.volt.textContent = d.voltage_ac != null ? d.voltage_ac.toFixed(1) : "--";
+    el.dist.textContent = d.distance_cm != null && d.distance_cm >= 0 ? d.distance_cm.toFixed(1) : "--";
 
     if (d.energy_source === "solar") {
         el.energy.textContent = "☀ SOLAR";
@@ -254,6 +262,9 @@ function updateCards(d) {
     el.cardVolt.className = "card" + (
         d.voltage_ac > THRESHOLDS.voltHigh ? " danger" :
             d.voltage_ac > 0 && d.voltage_ac < THRESHOLDS.voltLow ? " warning" : ""
+    );
+    el.cardDist.className = "card" + (
+        d.distance_cm != null && d.distance_cm >= 0 && d.distance_cm <= THRESHOLDS.distNear ? " warning" : ""
     );
 }
 

@@ -195,6 +195,7 @@ main {
 #card-hum .card-icon   { background: linear-gradient(135deg, #4da8ff 0%, #21d4fd 100%); box-shadow: 0 10px 22px rgba(33, 212, 253, 0.35); }
 #card-light .card-icon { background: var(--grad-warn);   box-shadow: 0 10px 22px rgba(255, 181, 71, 0.35); }
 #card-volt .card-icon  { background: linear-gradient(135deg, #9f7aea 0%, #4318ff 100%); box-shadow: 0 10px 22px rgba(67, 24, 255, 0.45); }
+#card-dist .card-icon  { background: linear-gradient(135deg, #21d4fd 0%, #2a5298 100%); box-shadow: 0 10px 22px rgba(33, 212, 253, 0.35); }
 #card-energy .card-icon{ background: var(--grad-accent); box-shadow: 0 10px 22px rgba(1, 181, 116, 0.35); }
 #card-alarm .card-icon { background: var(--grad-accent); box-shadow: 0 10px 22px rgba(1, 181, 116, 0.35); }
 

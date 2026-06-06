@@ -12,18 +12,20 @@ import { typography } from '@/theme/typography';
 export default function ChartsScreen() {
   const { readings, loading } = useReadingsHistory();
 
-  const { temp, hum, light, volt } = useMemo(() => {
+  const { temp, hum, light, volt, dist } = useMemo(() => {
     const temp: number[] = [];
     const hum: number[] = [];
     const light: number[] = [];
     const volt: number[] = [];
+    const dist: number[] = [];
     for (const r of readings) {
       if (typeof r.temperature === 'number') temp.push(r.temperature);
       if (typeof r.humidity === 'number') hum.push(r.humidity);
       if (typeof r.light_level === 'number') light.push(r.light_level);
       if (typeof r.voltage_ac === 'number') volt.push(r.voltage_ac);
+      if (typeof r.distance_cm === 'number') dist.push(r.distance_cm);
     }
-    return { temp, hum, light, volt };
+    return { temp, hum, light, volt, dist };
   }, [readings]);
 
   return (
@@ -67,6 +69,13 @@ export default function ChartsScreen() {
             unit="V"
             color={colors.brand2}
             values={volt}
+            decimals={1}
+          />
+          <RealtimeLineChart
+            title="Distância"
+            unit="cm"
+            color={colors.info}
+            values={dist}
             decimals={1}
           />
         </ScrollView>

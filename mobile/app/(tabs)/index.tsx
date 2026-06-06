@@ -32,6 +32,12 @@ function voltVariant(v?: number): SensorVariant {
   return 'default';
 }
 
+function distVariant(d?: number): SensorVariant {
+  if (d == null || d < 0) return 'default';
+  if (d <= thresholds.distanceCm.near) return 'warning';
+  return 'default';
+}
+
 function lastSeenLabel(ts?: number): string {
   if (!ts) return 'sem leituras';
   try {
@@ -56,6 +62,7 @@ export default function DashboardScreen() {
   const hum = online ? current?.humidity : undefined;
   const light = online ? current?.light_level : undefined;
   const volt = online ? current?.voltage_ac : undefined;
+  const dist = online ? current?.distance_cm : undefined;
   const energy = online ? current?.energy_source : undefined;
   const alarmActive = online && !!current?.alarm_active;
 
@@ -140,6 +147,17 @@ export default function DashboardScreen() {
                 variant={voltVariant(volt)}
                 iconGradient={['#9f7aea', '#4318ff']}
                 animationDelay={180}
+              />
+            </View>
+            <View style={styles.col}>
+              <SensorCard
+                icon="resize"
+                label="Distância"
+                value={dist != null && dist >= 0 ? dist.toFixed(1) : '--'}
+                unit="cm"
+                variant={distVariant(dist)}
+                iconGradient={['#21d4fd', '#2a5298']}
+                animationDelay={210}
               />
             </View>
             <View style={styles.col}>

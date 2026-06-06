@@ -46,6 +46,14 @@ function num(v?: string | null): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Igual ao num(), mas devolve undefined quando o campo está ausente/inválido —
+// usado em séries (ex.: distância) para não plotar um 0 falso onde não há leitura,
+// mantendo o mesmo comportamento de "lacuna" do dashboard web.
+function numOpt(v?: string | null): number | undefined {
+  const n = parseFloat(v ?? '');
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function mapFeed(f: ThingSpeakFeed): MappedReading {
   return {
     temperature: num(f.field1),
@@ -55,7 +63,7 @@ function mapFeed(f: ThingSpeakFeed): MappedReading {
     motion_detected: f.field5 === '1',
     energy_source: f.field6 === '1' ? 'solar' : 'diesel',
     alarm_active: f.field7 === '1',
-    uptime_ms: num(f.field8) * 1000,
+    distance_cm: numOpt(f.field8),
     timestamp: Date.parse(f.created_at),
     status: (f.status ?? '').trim(),
     entry_id: f.entry_id,

@@ -3,6 +3,7 @@ export const thresholds = {
   humidity: { low: 30, high: 70, unit: '%' },
   lightLevel: { low: 0, high: 100, unit: '%' },
   voltageAc: { low: 100, high: 240, unit: 'V' },
+  distanceCm: { near: 100, unit: 'cm' },
   offlineAfterSeconds: 120,
 } as const;
 
