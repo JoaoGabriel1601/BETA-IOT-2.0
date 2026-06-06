@@ -6,8 +6,8 @@
 | 2 | DHT22 (AM2302) — módulo | 1 | 18,00 | Inclui resistor pull-up |
 | 3 | LDR 5mm | 1 | 1,50 | — |
 | 4 | Resistor 10kΩ (divisor LDR) | 1 | 0,30 | — |
-| 5 | HC-SR501 — Sensor PIR | 1 | 12,00 | Alcance 3–7m |
-| 6 | ZMPT101B — Sensor de Tensão AC | 1 | 22,00 | Isolamento galvânico |
+| 5 | HC-SR04 — Sensor ultrassônico | 1 | 10,00 | Distância/presença, ~2–400 cm |
+| 6 | Potenciômetro 10kΩ (tensão simulada) | 1 | 3,00 | Simula a tensão AC; troque por ZMPT101B p/ medir AC real |
 | 7 | Buzzer ativo 5V | 1 | 5,00 | Gera som próprio |
 | 8 | Transistor BC547 (NPN) | 1 | 0,50 | Driver do buzzer |
 | 9 | Resistor 1kΩ (base BC547) | 1 | 0,30 | — |
@@ -17,6 +17,6 @@
 | 13 | Kit Jumpers M/M, M/F, F/F | 1 | 12,00 | 40 pcs cada |
 | 14 | Cabo USB Micro (programação) | 1 | 10,00 | — |
 | 15 | Fonte 5V 2A | 1 | 20,00 | Para relés e buzzer |
-| — | **TOTAL ESTIMADO** | — | **~R$ 178,40** | — |
+| — | **TOTAL ESTIMADO** | — | **~R$ 157,40** | — |
 
 > Preços médios em marketplaces brasileiros (abril/2026). Podem variar.

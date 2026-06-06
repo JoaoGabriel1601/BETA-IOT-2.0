@@ -14,7 +14,7 @@
 | DHT22 | Conexão |
 |---|---|
 | Pino 1 (VCC) | Trilho 3.3V |
-| Pino 2 (DATA) | GPIO 4 |
+| Pino 2 (DATA) | GPIO 2 |
 | — | Resistor **10kΩ** entre DATA e 3.3V (pull-up) |
 | Pino 3 (NC) | Não conectar |
 | Pino 4 (GND) | Trilho GND |
@@ -29,33 +29,26 @@
               GND
 ```
 
-## Passo 4 — HC-SR501 (PIR)
+## Passo 4 — HC-SR04 (ultrassônico: presença/distância)
 
-| HC-SR501 | Conexão |
+| HC-SR04 | Conexão |
 |---|---|
 | VCC | Trilho 5V (VIN) |
-| OUT | GPIO 27 |
+| TRIG | GPIO 27 |
+| ECHO | GPIO 14 |
 | GND | Trilho GND |
 
-**Ajustes no módulo:**
-- Potenciômetro de **sensibilidade** → máximo (sentido horário)
-- Potenciômetro de **tempo** → ~5s
-- Jumper em posição **H** (modo retrigger)
+> O firmware calcula a distância pelo tempo de eco e considera **presença/invasão** quando o objeto está a **≤100 cm**. A distância é enviada no `field8`. *(O ECHO do HC-SR04 é 5V; para uma montagem real rigorosa, use um divisor de tensão no ECHO para proteger o GPIO de 3.3V.)*
 
-## Passo 5 — ZMPT101B (Tensão AC)
+## Passo 5 — Potenciômetro (tensão AC simulada)
 
-| Lado DC | Conexão |
+| Potenciômetro | Conexão |
 |---|---|
-| VCC | Trilho 5V (VIN) |
-| OUT | GPIO 35 |
-| GND | Trilho GND |
+| Terminal 1 | Trilho 3.3V |
+| Cursor (wiper) | GPIO 35 (ADC1) |
+| Terminal 2 | Trilho GND |
 
-| Lado AC | Conexão |
-|---|---|
-| Terminal 1 | Fase |
-| Terminal 2 | Neutro |
-
-> ⚠ **PERIGO** — instalação AC deve ser feita por eletricista qualificado. Para testes didáticos seguros, use uma extensão cortada com os fios expostos em terminais fixos (não toque em partes vivas com o sistema energizado).
+> A tensão AC é **simulada**: o firmware mapeia a leitura do cursor para 0–250 V. Para medir a rede elétrica de verdade, substitua por um **ZMPT101B** (lado DC em 5V/OUT=GPIO35; lado AC em paralelo com fase/neutro). ⚠ **PERIGO** — instalação AC só por eletricista qualificado.
 
 ## Passo 6 — Buzzer com driver BC547
 
@@ -83,8 +76,8 @@ O buzzer positivo vai direto ao 5V; o BC547 chaveia o negativo.
 
 - [ ] Todos os GNDs no mesmo trilho
 - [ ] Nenhum fio solto ou cruzado
-- [ ] DHT22 e LDR alimentados em 3.3V
-- [ ] PIR, ZMPT e relés alimentados em 5V (VIN)
+- [ ] DHT22 (GPIO2) e LDR alimentados em 3.3V; potenciômetro em 3.3V
+- [ ] HC-SR04 e relés alimentados em 5V (VIN)
 - [ ] Nenhum analógico em ADC2 (só GPIOs 34 e 35)
 - [ ] Buzzer via BC547 (não direto no GPIO)
-- [ ] Lado AC do ZMPT isolado e protegido
+- [ ] Se usar ZMPT101B real: lado AC isolado e protegido (eletricista)
