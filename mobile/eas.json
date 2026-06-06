@@ -16,6 +16,9 @@
       "channel": "preview",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_THINGSPEAK_CHANNEL_ID": "3399683"
       }
     },
     "production": {
@@ -23,6 +26,9 @@
       "channel": "production",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_THINGSPEAK_CHANNEL_ID": "3399683"
       }
     }
   },
