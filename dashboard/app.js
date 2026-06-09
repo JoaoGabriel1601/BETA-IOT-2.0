@@ -130,16 +130,17 @@ const charts = {
 };
 
 function rebuildCharts(readings) {
-    const labels = readings.map((r) =>
-        r.timestamp
-            ? new Date(r.timestamp).toLocaleTimeString("pt-BR", {
-                  hour: "2-digit", minute: "2-digit", second: "2-digit"
-              })
-            : ""
-    );
+    // Cada gráfico usa só as leituras que têm valor para o seu campo.
+    // Assim não sobra ponto vazio (nem rótulo de horário) no meio do
+    // gráfico quando um sensor não reportou naquela amostra.
+    const fmtTime = (ts) =>
+        new Date(ts).toLocaleTimeString("pt-BR", {
+            hour: "2-digit", minute: "2-digit", second: "2-digit"
+        });
     const fill = (chart, key) => {
-        chart.data.labels = labels;
-        chart.data.datasets[0].data = readings.map((r) => r[key]);
+        const pts = readings.filter((r) => r.timestamp && r[key] != null);
+        chart.data.labels = pts.map((r) => fmtTime(r.timestamp));
+        chart.data.datasets[0].data = pts.map((r) => r[key]);
         chart.update("none");
     };
     fill(charts.temp, "temperature");
